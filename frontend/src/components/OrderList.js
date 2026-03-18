@@ -5,16 +5,32 @@ function OrderList() {
   const [orders, setOrders] = useState([]);
   const [sortField, setSortField] = useState('created_at');
   const [sortDir, setSortDir] = useState('desc');
+  const [message, setMessage] = useState(null);
 
 
   useEffect(() => {
-    fetchOrders().then(data => setOrders(data));
+    const loadOrders = async () => {
+      try {
+        const data = await fetchOrders();
+        setOrders(data);
+        setMessage(null);
+      } catch (err) {
+        setMessage({ type: 'error', text: err.message });
+      }
+    };
+
+    loadOrders();
   }, []);
 
   const handleStatusChange = async (orderId, newStatus) => {
-    await updateOrderStatus(orderId, newStatus);
-    const data = await fetchOrders();
-    setOrders(data);
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      const data = await fetchOrders();
+      setOrders(data);
+      setMessage(null);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    }
   };
 
   const sortedOrders = [...orders].sort((a, b) => {
@@ -42,6 +58,11 @@ function OrderList() {
   return (
     <div className="order-list">
       <h2>Orders ({orders.length})</h2>
+
+      {message && (
+        <div className={`message ${message.type}`}>{message.text}</div>
+      )}
+
       <table className="order-table">
         <thead>
           <tr>
