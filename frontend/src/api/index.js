@@ -42,6 +42,12 @@ export async function updateOrderStatus(id, status) {
   });
 }
 
+export async function cancelOrder(id) {
+  return request(`/orders/${id}/cancel`, {
+    method: 'PATCH',
+  });
+}
+
 export async function fetchCustomers() {
   return request('/customers');
 }

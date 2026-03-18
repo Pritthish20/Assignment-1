@@ -1,35 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { fetchOrders, updateOrderStatus } from '../api';
+import { fetchOrders, updateOrderStatus, cancelOrder } from '../api';
 
 function OrderList() {
   const [orders, setOrders] = useState([]);
   const [sortField, setSortField] = useState('created_at');
   const [sortDir, setSortDir] = useState('desc');
   const [message, setMessage] = useState(null);
+  const [activeOrderId, setActiveOrderId] = useState(null);
 
+  const loadOrders = async () => {
+    const data = await fetchOrders();
+    setOrders(data);
+  };
 
   useEffect(() => {
-    const loadOrders = async () => {
+    const loadInitialOrders = async () => {
       try {
-        const data = await fetchOrders();
-        setOrders(data);
+        await loadOrders();
         setMessage(null);
       } catch (err) {
         setMessage({ type: 'error', text: err.message });
       }
     };
 
-    loadOrders();
+    loadInitialOrders();
   }, []);
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
+      setActiveOrderId(orderId);
       await updateOrderStatus(orderId, newStatus);
-      const data = await fetchOrders();
-      setOrders(data);
+      await loadOrders();
       setMessage(null);
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
+    } finally {
+      setActiveOrderId(null);
+    }
+  };
+
+  const handleCancelOrder = async (order) => {
+    const confirmed = window.confirm(`Cancel order #${order.id}? Inventory will be restored.`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setActiveOrderId(order.id);
+      await cancelOrder(order.id);
+      await loadOrders();
+      setMessage({ type: 'success', text: `Order #${order.id} cancelled successfully.` });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setActiveOrderId(null);
     }
   };
 
@@ -72,6 +96,7 @@ function OrderList() {
             <th onClick={() => handleSort('quantity')} style={{ cursor: 'pointer' }}>Qty</th>
             <th onClick={() => handleSort('total_amount')} style={{ cursor: 'pointer' }}>Total</th>
             <th>Status</th>
+            <th>Action</th>
             <th onClick={() => handleSort('created_at')} style={{ cursor: 'pointer' }}>Date</th>
           </tr>
         </thead>
@@ -91,12 +116,29 @@ function OrderList() {
                 <select
                   className="status-select"
                   value={order.status}
+                  disabled={order.status === 'cancelled' || activeOrderId === order.id}
                   onChange={(e) => handleStatusChange(order.id, e.target.value)}
                 >
-                  {statusOptions.map((s) => (
+                  {(order.status === 'cancelled'
+                    ? [...statusOptions, 'cancelled']
+                    : statusOptions
+                  ).map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+              </td>
+              <td className="order-action-cell">
+                {['pending', 'confirmed'].includes(order.status) ? (
+                  <button
+                    className="cancel-btn"
+                    onClick={() => handleCancelOrder(order)}
+                    disabled={activeOrderId === order.id}
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  <span className="order-action-text">Not allowed</span>
+                )}
               </td>
               <td>{new Date(order.created_at).toLocaleDateString()}</td>
             </tr>
