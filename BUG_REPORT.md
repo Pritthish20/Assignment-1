@@ -8,7 +8,7 @@ This report lists the 6 most critical issues found in the original codebase, pri
 - Where: [backend/src/routes/customers.js](backend/src/routes/customers.js), `router.get('/search')`, especially lines 18-20.
 - Why it matters: This is the most serious security issue in the application. A malicious user can inject SQL through the `name` query parameter and alter query behavior or potentially access or damage data.
 - How to fix it: Replace string concatenation with a parameterized query, for example `SELECT * FROM customers WHERE name ILIKE $1` using `[%${name}%]` as the bound value.
-- Status: Fixed in commit `3d89a73` (`fix: parameterize customer search query`).
+
 
 ## 2. Orders Route Contains Combined Performance and Correctness Problems
 
@@ -16,7 +16,7 @@ This report lists the 6 most critical issues found in the original codebase, pri
 - Where: [backend/src/routes/orders.js](backend/src/routes/orders.js), `router.get('/')` and `router.post('/')`.
 - Why it matters: The list endpoint scales poorly because it runs extra queries per order, while the create endpoint can corrupt inventory/order state and oversell stock under concurrent requests.
 - How to fix it: Replace the list loop with one joined query, and wrap order creation in a transaction with `SELECT ... FOR UPDATE` on the product row.
-- Status: Fixed in commit `ee0e369` (`fix :N+1 query problem`). That commit includes both the joined list query and the transactional order-creation changes.
+
 
 ## 3. Global Error Handler Returns Success for Server Failures
 
@@ -32,7 +32,7 @@ This report lists the 6 most critical issues found in the original codebase, pri
 - Where: [backend/src/routes/orders.js](backend/src/routes/orders.js), `router.patch('/:id/status')`, especially lines 85-96.
 - Why it matters: Invalid states can be written to the database, which breaks business rules and directly affects the required cancellation feature.
 - How to fix it: Validate incoming statuses against an allowlist and enforce transition rules on the server before updating the record.
-- Status: Open.
+
 
 ## Fixes Made (Critical)
 
